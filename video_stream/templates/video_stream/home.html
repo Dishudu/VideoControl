@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32-CAM Video Stream</title>
+    {% comment %} <style>
+        #videoStream {
+            width: 640px;
+            height: 480px;
+            background-color: #333;
+        }
+    </style> {% endcomment %}
+</head>
+<body>
+    <h1>Видео с ESP32-CAM</h1>
+    <img id="videoStream" alt="Video Stream">
+
+    <script>
+        const videoStream = document.getElementById("videoStream");  // Элемент <img> для отображения видео
+        const ws = new WebSocket("ws://localhost/ws/browser/");  // Подключаемся к серверу
+
+        ws.binaryType = "arraybuffer";  // Тип данных - бинарный
+
+        ws.onmessage = function(event) {
+            if (event.data instanceof ArrayBuffer) {
+                // Создание объекта Blob для отображения изображения
+                const blob = new Blob([event.data], { type: 'image/jpeg' });
+                const url = URL.createObjectURL(blob);
+                videoStream.src = url;
+
+                // Освобождаем память после загрузки кадра
+                videoStream.onload = function() {
+                    URL.revokeObjectURL(url);
+                };
+            }
+        };
+
+        ws.onopen = function() {
+            console.log("WebSocket connection opened");
+        };
+
+        ws.onerror = function(error) {
+            console.log("WebSocket error: ", error);
+        };
+
+        ws.onclose = function() {
+            console.log("WebSocket connection closed");
+        };
+    </script>
+</body>
+</html>
