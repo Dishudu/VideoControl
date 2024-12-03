@@ -13,12 +13,12 @@
     </style> {% endcomment %}
 </head>
 <body>
-    <h1>Видео с ESP32-CAM</h1>
-    <img id="videoStream" alt="Video Stream">
 
+    <h1>Видео с ESP32-CAM</h1>
+    <div> <img id="videoStream" alt="Video Stream"> </div>
     <script>
         const videoStream = document.getElementById("videoStream");  // Элемент <img> для отображения видео
-        const ws = new WebSocket("ws://localhost/ws/browser/");  // Подключаемся к серверу
+        const ws = new WebSocket(`ws://${window.location.host}/ws/browser/`);  // Подключаемся к серверу
 
         ws.binaryType = "arraybuffer";  // Тип данных - бинарный
 
@@ -41,12 +41,28 @@
         };
 
         ws.onerror = function(error) {
-            console.log("WebSocket error: ", error);
+            console.error("WebSocket error: ", error);
+            alert("Ошибка соединения с сервером. Проверьте подключение.");
         };
 
         ws.onclose = function() {
             console.log("WebSocket connection closed");
         };
+    </script>
+
+    <div><button onclick="toggleRelay('ON')">Включить реле</button>
+    <button onclick="toggleRelay('OFF')">Выключить реле</button></div>
+    <script>
+        function toggleRelay(command) {
+            fetch('/relay-control/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ command }),
+            });
+        }
     </script>
 </body>
 </html>

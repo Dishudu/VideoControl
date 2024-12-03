@@ -5,11 +5,11 @@
 #include <WebSocketsClient.h>
 
 // Настройки подключения к Wi-Fi
-const char* ssid = "";
-const char* password = "";
+const char* ssid = "Redmi Note 13";
+const char* password = "98765432";
 
 // Настройки для WebSocket-соединения с сервером
-const char* websocket_server_ip = "192.168.87.95";  // IP-адрес вашего Django сервера
+const char* websocket_server_ip = "192.168.245.95";  // IP-адрес вашего Django сервера
 const uint16_t websocket_server_port = 8000;  // Порт, на котором работает сервер
 const char* websocket_url = "/ws/video/";  // Путь к WebSocket на сервере
 
@@ -60,8 +60,12 @@ void sendCameraFrame() {
     return;
   }
 
-  // Отправляем кадр через WebSocket
-  webSocket.sendBIN(fb->buf, fb->len);
+  if (fb->len > 0) {
+    webSocket.sendBIN(fb->buf, fb->len);
+    Serial.printf("Sent frame: %d bytes\n", fb->len);
+  } else {
+    Serial.println("Empty frame captured");
+  }
 
   esp_camera_fb_return(fb);  // Освобождаем буфер
 }
@@ -70,7 +74,8 @@ void sendCameraFrame() {
 void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
   switch(type) {
     case WStype_DISCONNECTED:
-      Serial.println("Disconnected from server");
+      Serial.println("Disconnected from server. Reconnecting...");
+      webSocket.begin(websocket_server_ip, websocket_server_port, websocket_url);
       break;
     case WStype_CONNECTED:
       Serial.println("Connected to server");
@@ -92,6 +97,7 @@ void setup() {
     delay(1000);
     Serial.println("Connecting to WiFi...");
   }
+
   Serial.println("Connected to WiFi");
   Serial.print("IP:");
   Serial.println(WiFi.localIP());
@@ -101,17 +107,18 @@ void setup() {
   // Подключение к WebSocket
   webSocket.begin(websocket_server_ip, websocket_server_port, websocket_url);
   webSocket.onEvent(webSocketEvent);
-
-  // Периодическая отправка кадров
-  xTaskCreate([](void *){
-    while (true) {
-      sendCameraFrame();
-      // Serial.println("Sended");
-      delay(50);  // Частота кадров 
-    }
-  }, "send_frame", 8192, NULL, 2, NULL);
 }
 
 void loop() {
-  webSocket.loop();  // Поддерживаем WebSocket соединение активным
+  webSocket.loop();
+
+  // Периодическая отправка кадров
+  static unsigned long lastFrameTime = 0;  // Переменная для отслеживания времени
+  const unsigned long frameInterval = 100; // Интервал между кадрами (мс)
+
+  unsigned long currentTime = millis();
+  if (currentTime - lastFrameTime >= frameInterval) {
+    lastFrameTime = currentTime;
+    sendCameraFrame();  // Отправляем кадр
+  }
 }

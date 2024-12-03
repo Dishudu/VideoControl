@@ -1,6 +1,8 @@
 from django.shortcuts import render
-from django.http import StreamingHttpResponse
+from django.http import StreamingHttpResponse, JsonResponse
 import cv2
+from .mqtt import send_relay_command
+import json
 
 # def gen_frames():
 #     # В данном примере используется локальная камера.
@@ -22,3 +24,12 @@ import cv2
 
 def video_stream(request):
     return render(request, 'video_stream/home.html')
+
+def relay_control(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        command = data.get('command')
+        if command in ['ON', 'OFF']:
+            send_relay_command(command)
+            return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'failed'}, status=400)
